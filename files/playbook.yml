@@ -1,0 +1,43 @@
+---
+- name: Implantação do Piloto Fortress X99 (Escudo Adulto & SafeSearch)
+  hosts: localhost # Para o piloto, rodaremos na própria máquina. Depois mudaremos para 'all'
+  connection: local
+  become: yes # Exige privilégios de root (sudo)
+  
+  tasks:
+    - name: 1. Instalar o motor de bloqueio em /usr/local/sbin/
+      ansible.builtin.copy:
+        src: files/fortress-update
+        dest: /usr/local/sbin/fortress-update
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: 2. Implantar a Unidade de Serviço do Systemd
+      ansible.builtin.copy:
+        src: files/fortress-update.service
+        dest: /etc/systemd/system/fortress-update.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Recarregar Systemd
+
+    - name: 3. Implantar o Gatilho de Tempo (Timer)
+      ansible.builtin.copy:
+        src: files/fortress-update.timer
+        dest: /etc/systemd/system/fortress-update.timer
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Recarregar Systemd
+
+    - name: 4. Habilitar e iniciar o Timer de atualização automática
+      ansible.builtin.systemd:
+        name: fortress-update.timer
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Recarregar Systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes

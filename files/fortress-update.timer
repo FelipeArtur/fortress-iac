@@ -1,0 +1,13 @@
+[Unit]
+Description=Gatilho Semanal para Atualização do Escudo Fortress
+
+[Timer]
+# Executa 5 minutos após o boot para garantir que a rede estabilizou
+OnBootSec=5min
+# Executa uma vez por semana (você pode mudar para 'daily' se preferir)
+OnCalendar=weekly
+# Se a máquina estava desligada na hora programada, executa no próximo boot
+Persistent=true
+
+[Install]
+WantedBy=timers.target

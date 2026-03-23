@@ -1,0 +1,8 @@
+[Unit]
+Description=Pinguim Supremo X99 - Atualizador do Escudo Adulto e SafeSearch
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/fortress-update

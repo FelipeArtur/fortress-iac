@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Pinguim Supremo X99 - Execução Direta: Escudo Adulto v1.1 (SafeSearch)
+# ==============================================================================
+set -e
+
+if [ "$EUID" -ne 0 ]; then
+    echo "[!] Acesso negado. A manipulação de rotas requer elevação. Use sudo."
+    exit 1
+fi
+
+URL="https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn/hosts"
+HOSTS="/etc/hosts"
+BACKUP="/etc/hosts.x99.bak"
+TMP_FILE="/tmp/hosts_piloto"
+
+echo ":: [1/5] Salvando estado atual da rede em $BACKUP..."
+cp "$HOSTS" "$BACKUP"
+
+echo ":: [2/5] Baixando a matriz de bloqueio de StevenBlack..."
+curl -sS "$URL" -o "$TMP_FILE"
+
+echo ":: [3/5] Aplicando substituição atômica no arquivo de hosts..."
+cat "$TMP_FILE" > "$HOSTS"
+rm -f "$TMP_FILE"
+
+echo ":: [4/5] Injetando Módulo SafeSearch (Google, Bing, DuckDuckGo)..."
+# Resolução dinâmica dos servidores estritos (O Jeito Arch de fazer)
+IP_GOOGLE=$(getent ahosts forcesafesearch.google.com | awk '{print $1}' | head -n 1)
+IP_BING=$(getent ahosts strict.bing.com | awk '{print $1}' | head -n 1)
+IP_DDG=$(getent ahosts safe.duckduckgo.com | awk '{print $1}' | head -n 1)
+
+# Anexando as rotas blindadas no final do arquivo hosts
+cat <<EOF >> "$HOSTS"
+
+# ==========================================
+# PINGUIM SUPREMO: FORCED SAFESEARCH VIPs
+# ==========================================
+$IP_GOOGLE www.google.com
+$IP_GOOGLE www.google.com.br
+$IP_GOOGLE google.com
+$IP_BING www.bing.com
+$IP_BING bing.com
+$IP_DDG duckduckgo.com
+$IP_DDG www.duckduckgo.com
+EOF
+
+echo ":: [5/5] Expurgando o cache de resolução DNS do CachyOS..."
+if command -v resolvectl &> /dev/null; then
+    resolvectl flush-caches
+else
+    systemctl restart NetworkManager
+fi
+
+echo ">> Operação concluída. Tráfego bloqueado e Motores de Busca em modo Estrito."
