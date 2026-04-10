@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Pinguim Supremo X99 - Execução Direta: Escudo Adulto v1.1 (SafeSearch)
+# Pinguim Supremo X99 — Escudo Adulto v1.1 (SafeSearch)
+# ==============================================================================
+# Descrição:
+#   Aplica filtragem de conteúdo adulto e força o modo de Busca Segura nos
+#   principais mecanismos de pesquisa (Google, Bing, DuckDuckGo) via manipulação
+#   do arquivo /etc/hosts. Utiliza a lista pública do StevenBlack como base.
+#
+# Agendamento:
+#   Executado automaticamente via systemd timer (5 min após boot + semanal).
+#   Ver: fortress-update.timer e fortress-update.service
+#
+# Dependências:
+#   - curl           (download da lista de bloqueio)
+#   - getent         (resolução DNS dos endpoints de SafeSearch)
+#   - resolvectl     (flush de cache DNS — preferido)
+#   - NetworkManager (fallback para flush de cache DNS)
+#
+# Aviso:
+#   Requer privilégios de root. O backup anterior (/etc/hosts.x99.bak) é
+#   sobrescrito a cada execução — não há rotação de backups.
 # ==============================================================================
 set -e
 
@@ -18,6 +37,8 @@ echo ":: [1/5] Salvando estado atual da rede em $BACKUP..."
 cp "$HOSTS" "$BACKUP"
 
 echo ":: [2/5] Baixando a matriz de bloqueio de StevenBlack..."
+# A variante 'porn/hosts' bloqueia apenas conteúdo adulto, sem afetar
+# outras categorias (fake news, gambling, etc.), minimizando falsos positivos.
 curl -sS "$URL" -o "$TMP_FILE"
 
 echo ":: [3/5] Aplicando substituição atômica no arquivo de hosts..."
@@ -25,7 +46,9 @@ cat "$TMP_FILE" > "$HOSTS"
 rm -f "$TMP_FILE"
 
 echo ":: [4/5] Injetando Módulo SafeSearch (Google, Bing, DuckDuckGo)..."
-# Resolução dinâmica dos servidores estritos (O Jeito Arch de fazer)
+# Cada mecanismo de busca expõe um hostname especial cujo IP redireciona para
+# o modo restrito. Resolvemos esses IPs em tempo de execução (getent ahosts)
+# para garantir que sempre usamos o endereço atual, sem hardcode.
 IP_GOOGLE=$(getent ahosts forcesafesearch.google.com | awk '{print $1}' | head -n 1)
 IP_BING=$(getent ahosts strict.bing.com | awk '{print $1}' | head -n 1)
 IP_DDG=$(getent ahosts safe.duckduckgo.com | awk '{print $1}' | head -n 1)
@@ -46,6 +69,8 @@ $IP_DDG www.duckduckgo.com
 EOF
 
 echo ":: [5/5] Expurgando o cache de resolução DNS do CachyOS..."
+# Preferência pelo resolvectl (systemd-resolved). Caso não disponível, reinicia
+# o NetworkManager como fallback para garantir que o cache antigo seja descartado.
 if command -v resolvectl &> /dev/null; then
     resolvectl flush-caches
 else
