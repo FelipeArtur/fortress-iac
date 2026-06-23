@@ -31,7 +31,7 @@ Para iniciar a instalação em qualquer ambiente, é necessário obter os arquiv
 
 **Via Git (Recomendado):**
 ```bash
-git clone <url-do-repositório> fortress-iac
+git clone https://github.com/FelipeArtur/fortress-iac.git
 cd fortress-iac
 ```
 
