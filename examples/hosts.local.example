@@ -1,0 +1,27 @@
+# ==============================================================================
+# Fortress IaC — hosts.local (example)
+# ==============================================================================
+# Custom local entries that must survive every Fortress run.
+#
+# The contents of this file are merged at the TOP of the system hosts file on
+# every execution, so anything here always takes precedence and is never lost
+# when the blocklist is refreshed.
+#
+# Install location:
+#   Linux   -> /etc/hosts.local
+#   Windows -> C:\Windows\System32\drivers\etc\hosts.local
+#
+# Format is identical to a standard hosts file: "<IP>  <hostname> [aliases...]".
+# ==============================================================================
+
+# Loopback basics (keep these if you start from an empty file)
+127.0.0.1   localhost
+::1         localhost
+
+# Internal / development hosts
+192.168.1.10   dev.local
+192.168.1.20   git.internal
+10.0.0.5       nas.home
+
+# Pin a service to a specific IP
+# 203.0.113.42  api.example.com
