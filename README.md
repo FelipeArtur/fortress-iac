@@ -200,12 +200,34 @@ Clear-DnsClientCache
 
 ## Managing Custom Local Entries
 
-To keep local routes that must not be overwritten (dev server IPs, internal shortcuts, etc.), declare them in the `hosts.local` file. Its contents are automatically merged at the **top** of the main `hosts` file on every run.
+The `hosts.local` file is your override layer. Its contents are merged at the **top** of the main `hosts` file on every run, so they always take precedence and are never lost when the blocklist refreshes.
 
 - **Linux:** `/etc/hosts.local`
 - **Windows:** `C:\Windows\System32\drivers\etc\hosts.local`
 
-On first run, if no `hosts.local` exists, your current `hosts` file is copied into it so nothing is lost. See [`examples/hosts.local.example`](examples/hosts.local.example) for the expected format.
+On first run, if no `hosts.local` exists, your current `hosts` file is copied into it so nothing is lost. See [`examples/hosts.local.example`](examples/hosts.local.example) for the format.
+
+Two uses:
+
+**1. Preserve local routes** — dev server IPs, internal shortcuts, etc.:
+```text
+192.168.1.10   dev.local
+```
+
+**2. Add your own blocks** — sites the StevenBlack list misses, such as **mirror domains** (`en-redgifs.com`, language-prefixed variants, brand-new sites). Point them at `0.0.0.0`:
+```text
+0.0.0.0  en-redgifs.com
+0.0.0.0  www.en-redgifs.com
+```
+
+> Hosts files have **no wildcards** — list every domain (and `www.` variant) explicitly. After editing, re-apply and flush:
+> ```bash
+> sudo /usr/local/sbin/fortress-update && sudo resolvectl flush-caches   # Linux
+> ```
+> ```powershell
+> .\fortress-update.ps1 ; ipconfig /flushdns                              # Windows
+> ```
+> For broad, mirror-proof category blocking that a static list can't keep up with, point your OS/router at a family DNS resolver (e.g. Cloudflare for Families `1.1.1.3`) — see [Troubleshooting](#troubleshooting).
 
 ---
 

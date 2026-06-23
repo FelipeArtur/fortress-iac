@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   delay).
 
 ### Added
+- **Custom blocks:** documented using `hosts.local` to block sites the
+  StevenBlack list misses (e.g. mirror domains like `en-redgifs.com`), with a
+  worked example in `examples/hosts.local.example`. Entries are merged at the
+  top of `hosts` every run, so they block and survive refreshes.
 - **Windows installer:** disables DNS-over-HTTPS (DoH) via browser policy for
   Edge, Chrome, Brave, and Firefox, so browsers can no longer bypass the
   hosts-based filter. (Browsers will report "managed by your organization" — a

@@ -1,7 +1,10 @@
 # ==============================================================================
 # Fortress IaC — hosts.local (example)
 # ==============================================================================
-# Custom local entries that must survive every Fortress run.
+# Custom entries that must survive every Fortress run. Two uses:
+#   1. Preserve local routes (dev servers, internal shortcuts).
+#   2. Add YOUR OWN blocks for sites the StevenBlack list misses
+#      (e.g. mirror domains like en-redgifs.com). Point them at 0.0.0.0.
 #
 # The contents of this file are merged at the TOP of the system hosts file on
 # every execution, so anything here always takes precedence and is never lost
@@ -12,6 +15,7 @@
 #   Windows -> C:\Windows\System32\drivers\etc\hosts.local
 #
 # Format is identical to a standard hosts file: "<IP>  <hostname> [aliases...]".
+# NOTE: hosts files do NOT support wildcards — list each domain explicitly.
 # ==============================================================================
 
 # Loopback basics (keep these if you start from an empty file)
@@ -25,3 +29,12 @@
 
 # Pin a service to a specific IP
 # 203.0.113.42  api.example.com
+
+# ------------------------------------------------------------------------------
+# Custom blocks — sites the StevenBlack list doesn't cover (e.g. mirrors).
+# Send them to 0.0.0.0 so they fail to resolve. Add one line per domain.
+# ------------------------------------------------------------------------------
+0.0.0.0  en-redgifs.com
+0.0.0.0  www.en-redgifs.com
+# 0.0.0.0  some-new-mirror.com
+# 0.0.0.0  www.some-new-mirror.com
