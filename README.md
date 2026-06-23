@@ -25,6 +25,22 @@ fortress-iac/
     └── fortress-update.ps1      # Script principal em PowerShell
 ```
 
+## Obtenção do Repositório
+
+Para iniciar a instalação em qualquer ambiente, é necessário obter os arquivos do projeto para a sua máquina local.
+
+**Via Git (Recomendado):**
+```bash
+git clone <url-do-repositório> fortress-iac
+cd fortress-iac
+```
+
+**Via Arquivo Compactado (ZIP):**
+Caso não possua o Git instalado (cenário comum em servidores ou estações Windows), você pode obter os arquivos sem depender de linha de comando:
+1. Acesse a página do repositório no navegador.
+2. Clique no botão **Code** e selecione **Download ZIP**.
+3. Extraia o arquivo e abra o Terminal ou PowerShell dentro da pasta `fortress-iac`.
+
 ## Implantação no Linux
 
 ### Pré-requisitos
