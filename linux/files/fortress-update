@@ -89,7 +89,12 @@ $IP_DDG www.duckduckgo.com
 EOF
 
 echo ":: [5/6] Applying atomic replacement to the hosts file..."
-cp "$HOSTS" "$BACKUP"
+# Back up the ORIGINAL hosts only once. On repeated runs the current hosts is
+# already fortressed, so overwriting the backup would destroy the only clean
+# copy and make a restore useless.
+if [ ! -f "$BACKUP" ]; then
+    cp "$HOSTS" "$BACKUP"
+fi
 mv "$TMP_FINAL" "$HOSTS"
 chmod 644 "$HOSTS"
 rm -f "$TMP_DOWNLOAD"

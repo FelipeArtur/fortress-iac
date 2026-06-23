@@ -93,7 +93,12 @@ $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($TmpFinal, $FinalContent, $Utf8NoBom)
 
 Write-Host ":: [5/6] Applying replacement to the hosts file..."
-Copy-Item -Path $HostsFile -Destination $BackupFile -Force
+# Back up the ORIGINAL hosts only once. On repeated runs the current hosts is
+# already fortressed, so overwriting the backup would destroy the only clean
+# copy and make a restore useless.
+if (!(Test-Path $BackupFile)) {
+    Copy-Item -Path $HostsFile -Destination $BackupFile -Force
+}
 Copy-Item -Path $TmpFinal -Destination $HostsFile -Force
 Remove-Item -Path $TmpDownload -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $TmpFinal -Force -ErrorAction SilentlyContinue
