@@ -214,10 +214,10 @@ Two uses:
 192.168.1.10   dev.local
 ```
 
-**2. Add your own blocks** — sites the StevenBlack list misses, such as **mirror domains** (`en-redgifs.com`, language-prefixed variants, brand-new sites). Point them at `0.0.0.0`:
+**2. Add your own blocks** — sites the StevenBlack list misses, such as **mirror domains** (language-prefixed variants, brand-new sites). Point them at `0.0.0.0`:
 ```text
-0.0.0.0  en-redgifs.com
-0.0.0.0  www.en-redgifs.com
+0.0.0.0  unwanted-site.example
+0.0.0.0  www.unwanted-site.example
 ```
 
 > Hosts files have **no wildcards** — list every domain (and `www.` variant) explicitly. After editing, re-apply and flush:

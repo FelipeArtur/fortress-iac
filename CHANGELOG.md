@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Windows installer:** the first run was triggered via the SYSTEM scheduled
+  task, which doesn't inherit the interactive user's network/proxy and could
+  silently fail to download the blocklist, leaving `hosts` untouched. The
+  installer now runs the engine directly in the elevated session so the filter
+  is applied immediately; the task still handles boot/weekly runs.
+- **Windows:** step `[6/6]` could hang for a long time because a large hosts
+  file keeps the DNS Client service busy, blocking `Clear-DnsClientCache`. The
+  flush is now time-bounded so the script never hangs.
 - **Both platforms:** the original `hosts` backup (`hosts.bak`) was overwritten
   on every run, so after the second run the "backup" was an already-fortressed
   file and a restore was useless. The backup is now written only once, on the
@@ -28,9 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Custom blocks:** documented using `hosts.local` to block sites the
-  StevenBlack list misses (e.g. mirror domains like `en-redgifs.com`), with a
-  worked example in `examples/hosts.local.example`. Entries are merged at the
-  top of `hosts` every run, so they block and survive refreshes.
+  StevenBlack list misses (e.g. mirror domains), with an example in
+  `examples/hosts.local.example`. Entries are merged at the top of `hosts`
+  every run, so they block and survive refreshes.
 - **Windows installer:** disables DNS-over-HTTPS (DoH) via browser policy for
   Edge, Chrome, Brave, and Firefox, so browsers can no longer bypass the
   hosts-based filter. (Browsers will report "managed by your organization" — a

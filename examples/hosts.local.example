@@ -4,7 +4,7 @@
 # Custom entries that must survive every Fortress run. Two uses:
 #   1. Preserve local routes (dev servers, internal shortcuts).
 #   2. Add YOUR OWN blocks for sites the StevenBlack list misses
-#      (e.g. mirror domains like en-redgifs.com). Point them at 0.0.0.0.
+#      (e.g. mirror domains it hasn't caught yet). Point them at 0.0.0.0.
 #
 # The contents of this file are merged at the TOP of the system hosts file on
 # every execution, so anything here always takes precedence and is never lost
@@ -32,9 +32,8 @@
 
 # ------------------------------------------------------------------------------
 # Custom blocks — sites the StevenBlack list doesn't cover (e.g. mirrors).
-# Send them to 0.0.0.0 so they fail to resolve. Add one line per domain.
+# Send them to 0.0.0.0 so they fail to resolve. Add one line per domain
+# (and its www. variant); hosts files have no wildcards. Uncomment and edit:
 # ------------------------------------------------------------------------------
-0.0.0.0  en-redgifs.com
-0.0.0.0  www.en-redgifs.com
-# 0.0.0.0  some-new-mirror.com
-# 0.0.0.0  www.some-new-mirror.com
+# 0.0.0.0  unwanted-site.example
+# 0.0.0.0  www.unwanted-site.example
