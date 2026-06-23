@@ -3,7 +3,8 @@
     Fortress IaC Installer for Windows
 .DESCRIPTION
     Creates the scheduled task to execute fortress-update.ps1 on system startup
-    and also weekly.
+    and also weekly, and disables DNS-over-HTTPS (DoH) in supported browsers via
+    policy so they cannot bypass the hosts-based filtering.
 #>
 
 $ErrorActionPreference = "Stop"
@@ -12,6 +13,36 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
     Write-Warning "Access denied. Run PowerShell as Administrator to install."
     exit 1
 }
+
+# Disable DNS-over-HTTPS via browser policy. Without this, browsers resolve
+# domains over an encrypted DNS channel and ignore the hosts file entirely,
+# defeating the whole filter. Setting it as a managed policy also prevents a
+# user from re-enabling it in the browser UI (the toggle becomes greyed out).
+# NOTE: this writes machine-wide policy keys under HKLM\SOFTWARE\Policies and
+# will make the browser report "managed by your organization" — expected.
+function Disable-BrowserDoH {
+    # Chromium-family browsers: DnsOverHttpsMode = "off" (REG_SZ).
+    $ChromiumPolicies = @(
+        "HKLM:\SOFTWARE\Policies\Microsoft\Edge",
+        "HKLM:\SOFTWARE\Policies\Google\Chrome",
+        "HKLM:\SOFTWARE\Policies\BraveSoftware\Brave"
+    )
+    foreach ($key in $ChromiumPolicies) {
+        New-Item -Path $key -Force | Out-Null
+        Set-ItemProperty -Path $key -Name "DnsOverHttpsMode" -Value "off" -Type String
+    }
+
+    # Firefox uses its own policy tree; Enabled=0 turns DoH off, Locked=1 pins it.
+    $Firefox = "HKLM:\SOFTWARE\Policies\Mozilla\Firefox\DNSOverHTTPS"
+    New-Item -Path $Firefox -Force | Out-Null
+    Set-ItemProperty -Path $Firefox -Name "Enabled" -Value 0 -Type DWord
+    Set-ItemProperty -Path $Firefox -Name "Locked"  -Value 1 -Type DWord
+
+    Write-Host "DoH disabled via policy for Edge, Chrome, Brave, and Firefox."
+}
+
+Write-Host "Hardening browsers (disabling DNS-over-HTTPS)..."
+Disable-BrowserDoH
 
 $TaskName = "Fortress-IaC-Update"
 $ScriptPath = Resolve-Path ".\fortress-update.ps1" | Select-Object -ExpandProperty Path
