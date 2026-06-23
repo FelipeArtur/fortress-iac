@@ -63,10 +63,10 @@ On every run the engine performs an atomic, idempotent rebuild of the `hosts` fi
 2. **Download the blocklist** from the StevenBlack `alternates/porn` matrix.
 3. **Resolve SafeSearch endpoints** for Google, Bing, and DuckDuckGo (with hardcoded fallback IPs if DNS is unavailable, e.g. early at boot).
 4. **Assemble** local entries + blocklist + SafeSearch overrides into a single file.
-5. **Apply atomically** — the previous `hosts` is saved to `hosts.bak`, then replaced in one move to avoid partial/corrupt routing.
+5. **Apply atomically** — on the first run the original `hosts` is saved to `hosts.bak` (kept untouched afterwards), then the file is replaced in one move to avoid partial/corrupt routing.
 6. **Flush the DNS cache** so changes take effect immediately.
 
-The whole flow is automated by a **systemd timer** (Linux) or a **Scheduled Task** (Windows), running at startup and once a week.
+Every run fully rebuilds the file from `hosts.local` plus a freshly downloaded blocklist — nothing is appended — so **repeated runs never accumulate stale or duplicate entries**, the original backup is preserved, and temporary files are removed each time. The whole flow is automated by a **systemd timer** (Linux) or a **Scheduled Task** (Windows), running at startup and once a week.
 
 ```text
         ┌──────────────┐      ┌──────────────────┐      ┌─────────────────┐
@@ -106,15 +106,8 @@ fortress-iac/
 
 ## Getting the Repository
 
-Get the project files onto the target machine before installing.
+The [Quick Start](#quick-start) clones via Git. If you don't have Git (common on Windows), download the ZIP instead:
 
-**Via Git (recommended):**
-```bash
-git clone https://github.com/FelipeArtur/fortress-iac.git
-cd fortress-iac
-```
-
-**Via ZIP (no Git — common on Windows):**
 1. Open the repository page in your browser.
 2. Click **Code → Download ZIP**.
 3. Extract it and open a terminal/PowerShell inside the `fortress-iac` folder.
@@ -187,6 +180,8 @@ sudo resolvectl flush-caches 2>/dev/null || true
 
 The installer registers a Scheduled Task (`Fortress-IaC-Update`) under the **SYSTEM** account that runs **at startup (3-minute delay so the network is ready)** and **weekly (Sunday 03:00)**, then runs it once immediately.
 
+It also **disables DNS-over-HTTPS (DoH)** via policy for Edge, Chrome, Brave, and Firefox — otherwise those browsers resolve domains over encrypted DNS and ignore the hosts file, defeating the filter. As a side effect, the browsers will report *"managed by your organization"* and the secure-DNS toggle becomes greyed out; this is expected and is what keeps the filter from being bypassed. See [Troubleshooting](#troubleshooting) to revert it.
+
 ### Verify it works
 ```powershell
 Get-Content $env:windir\System32\drivers\etc\hosts | Select-String "StevenBlack" | Select-Object -First 1
@@ -216,8 +211,17 @@ On first run, if no `hosts.local` exists, your current `hosts` file is copied in
 
 ## Troubleshooting
 
-**SafeSearch not enforced / Google still shows unfiltered results.**
-Browsers with **DNS-over-HTTPS** ignore the `hosts` file. Disable DoH (Chrome/Edge: *Settings → Privacy → Use secure DNS = Off*; Firefox: *Settings → Privacy → DNS over HTTPS = Off*) or enforce filtering at the router. Then flush the cache (`Clear-DnsClientCache` / `resolvectl flush-caches`) and restart the browser.
+**SafeSearch / blocklist not enforced — sites still load.**
+Browsers with **DNS-over-HTTPS** ignore the `hosts` file. On **Windows** the installer disables DoH automatically (Edge, Chrome, Brave, Firefox) via policy. On **Linux**, or if you skipped that, disable it manually (Chrome/Edge: *Settings → Privacy → Use secure DNS = Off*; Firefox: *Settings → Privacy → DNS over HTTPS = Off*) or enforce filtering at the router. After any change, flush the cache (`Clear-DnsClientCache` / `resolvectl flush-caches`) and fully restart the browser (browsers also keep their own DNS cache and live connections).
+
+**Browser says "managed by your organization" after install (Windows).**
+Expected — the installer sets the DoH-off browser policy, and any browser policy triggers that banner. It does **not** mean a remote organization controls your machine (verify with `dsregcmd /status`: all `NO` = no org). To revert, delete the policy values — but DoH will then be re-enabled and can bypass the filter:
+```powershell
+Remove-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft\Edge"        -Name DnsOverHttpsMode -ErrorAction SilentlyContinue
+Remove-ItemProperty "HKLM:\SOFTWARE\Policies\Google\Chrome"         -Name DnsOverHttpsMode -ErrorAction SilentlyContinue
+Remove-ItemProperty "HKLM:\SOFTWARE\Policies\BraveSoftware\Brave"   -Name DnsOverHttpsMode -ErrorAction SilentlyContinue
+Remove-Item "HKLM:\SOFTWARE\Policies\Mozilla\Firefox\DNSOverHTTPS" -Recurse -ErrorAction SilentlyContinue
+```
 
 **Windows: changes to `hosts` get reverted or blocked.**
 Windows Defender's **Controlled Folder Access** and some antivirus "tamper protection" features guard the `hosts` file. If edits are blocked, add `powershell.exe` (or the script) to the allowed apps, or temporarily disable Controlled Folder Access while installing.

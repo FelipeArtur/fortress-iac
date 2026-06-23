@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Both platforms:** the original `hosts` backup (`hosts.bak`) was overwritten
+  on every run, so after the second run the "backup" was an already-fortressed
+  file and a restore was useless. The backup is now written only once, on the
+  first run, preserving the genuine pre-Fortress file.
 - **Windows:** SafeSearch IPs could resolve to empty values because
   `Resolve-DnsName` returned the CNAME record first; now filtered to A records
   with a non-null address, falling back to the hardcoded IP otherwise.
@@ -23,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   delay).
 
 ### Added
+- **Windows installer:** disables DNS-over-HTTPS (DoH) via browser policy for
+  Edge, Chrome, Brave, and Firefox, so browsers can no longer bypass the
+  hosts-based filter. (Browsers will report "managed by your organization" — a
+  side effect of any browser policy; revert steps are documented in the README.)
 - `LICENSE` (MIT).
 - `CHANGELOG.md`, `CONTRIBUTING.md`, `.editorconfig`.
 - `examples/hosts.local.example`.
