@@ -1,92 +1,92 @@
 # Fortress IaC
 
-O Fortress IaC é uma solução de automação de infraestrutura projetada para aplicar filtragem de conteúdo adulto e imposição de Busca Segura (SafeSearch) nos principais motores de busca (Google, Bing, DuckDuckGo). A ferramenta opera gerenciando dinamicamente o arquivo `hosts` do sistema operacional e possui suporte para ambientes Linux e Windows.
+Fortress IaC is an infrastructure automation solution designed to enforce adult content filtering and SafeSearch across major search engines (Google, Bing, DuckDuckGo). The tool operates by dynamically managing the operating system's `hosts` file and supports both Linux and Windows environments.
 
-## Arquitetura
+## Architecture
 
-O script de automação é executado durante a inicialização do sistema e de forma programada semanalmente. O fluxo de execução consiste em:
+The automation script executes during system boot and on a scheduled weekly basis. The execution flow consists of:
 
-1. Identificar e preservar configurações locais de rede por meio de um arquivo auxiliar (`hosts.local`).
-2. Realizar o download da lista pública de bloqueio de conteúdo adulto do repositório [StevenBlack/hosts](https://github.com/StevenBlack/hosts).
-3. Resolver e injetar os endpoints de DNS para forçar o modo estrito de SafeSearch.
-4. Aplicar as alterações de forma atômica para prevenir a corrupção do roteamento local.
-5. Executar a limpeza do cache de DNS do sistema.
+1. Identifying and preserving local network configurations via an auxiliary file (`hosts.local`).
+2. Downloading the public adult content blocklist from the [StevenBlack/hosts](https://github.com/StevenBlack/hosts) repository.
+3. Resolving and injecting DNS endpoints to enforce strict SafeSearch modes.
+4. Applying the changes atomically to prevent local routing corruption.
+5. Flushing the system's DNS cache.
 
-## Estrutura do Repositório
+## Repository Structure
 
 ```text
 fortress-iac/
 ├── README.md
 ├── linux/
-│   ├── playbook.yml             # Playbook de implantação Ansible
-│   └── files/                   # Script principal e unidades do Systemd
+│   ├── playbook.yml             # Ansible deployment playbook
+│   └── files/                   # Main script and Systemd units
 └── windows/
-    ├── install.ps1              # Script de implantação (Task Scheduler)
-    └── fortress-update.ps1      # Script principal em PowerShell
+    ├── install.ps1              # Deployment script (Task Scheduler)
+    └── fortress-update.ps1      # Main PowerShell script
 ```
 
-## Obtenção do Repositório
+## Getting the Repository
 
-Para iniciar a instalação em qualquer ambiente, é necessário obter os arquivos do projeto para a sua máquina local.
+To start the installation in any environment, you must first obtain the project files to your local machine.
 
-**Via Git (Recomendado):**
+**Via Git (Recommended):**
 ```bash
 git clone https://github.com/FelipeArtur/fortress-iac.git
 cd fortress-iac
 ```
 
-**Via Arquivo Compactado (ZIP):**
-Caso não possua o Git instalado (cenário comum em servidores ou estações Windows), você pode obter os arquivos sem depender de linha de comando:
-1. Acesse a página do repositório no navegador.
-2. Clique no botão **Code** e selecione **Download ZIP**.
-3. Extraia o arquivo e abra o Terminal ou PowerShell dentro da pasta `fortress-iac`.
+**Via Compressed File (ZIP):**
+If you don't have Git installed (a common scenario on Windows servers or workstations), you can get the files without relying on the command line:
+1. Go to the repository page in your browser.
+2. Click the **Code** button and select **Download ZIP**.
+3. Extract the file and open the Terminal or PowerShell inside the `fortress-iac` folder.
 
-## Implantação no Linux
+## Linux Deployment
 
-### Pré-requisitos
-*   `ansible` (Para implantação)
+### Prerequisites
+*   `ansible` (For deployment)
 *   `curl`
 *   `getent`
 
-### Instalação
+### Installation
 
-1. Navegue até o diretório Linux:
+1. Navigate to the Linux directory:
    ```bash
    cd linux
    ```
-2. Execute o playbook do Ansible com privilégios de superusuário:
+2. Execute the Ansible playbook with superuser privileges:
    ```bash
    sudo ansible-playbook playbook.yml
    ```
-3. Verifique o status de agendamento do serviço:
+3. Verify the service schedule status:
    ```bash
    systemctl status fortress-update.timer
    ```
 
-## Implantação no Windows
+## Windows Deployment
 
-### Pré-requisitos
-*   PowerShell 5.1 ou superior
-*   Privilégios de Administrador
+### Prerequisites
+*   PowerShell 5.1 or higher
+*   Administrator privileges
 
-### Instalação
+### Installation
 
-1. Abra o PowerShell como Administrador.
-2. Navegue até o diretório Windows:
+1. Open PowerShell as Administrator.
+2. Navigate to the Windows directory:
    ```powershell
    cd windows
    ```
-3. Execute o script de instalação:
+3. Execute the installation script:
    ```powershell
    .\install.ps1
    ```
-   *Nota: Caso as políticas do sistema bloqueiem a execução, utilize o comando `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` previamente.*
+   *Note: If system policies block the execution, use the command `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` beforehand.*
 
-O instalador configurará uma Tarefa Agendada operando sob a conta de sistema (`SYSTEM`), programada para ser executada na inicialização da máquina e semanalmente.
+The installer will configure a Scheduled Task running under the `SYSTEM` account, scheduled to execute on machine startup and weekly.
 
-## Gestão de Entradas Locais Customizadas
+## Managing Custom Local Entries
 
-Para preservar configurações de rede locais que não devem ser sobrescritas (como IPs de servidores de desenvolvimento local ou atalhos internos), as rotas devem ser declaradas no arquivo correspondente abaixo. O sistema incluirá automaticamente este conteúdo no início do arquivo `hosts` principal em todas as execuções.
+To preserve local network configurations that shouldn't be overwritten (such as local development server IPs or internal shortcuts), routes must be declared in the corresponding file below. The system will automatically include this content at the beginning of the main `hosts` file on every execution.
 
 *   **Linux:** `/etc/hosts.local`
 *   **Windows:** `C:\Windows\System32\drivers\etc\hosts.local`

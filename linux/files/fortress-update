@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Fortress IaC — Escudo Adulto & SafeSearch
+# Fortress IaC — Adult Content Shield & SafeSearch
 # ==============================================================================
-# Descrição:
-#   Aplica filtragem de conteúdo adulto e força o modo de Busca Segura nos
-#   principais mecanismos de pesquisa (Google, Bing, DuckDuckGo) via manipulação
-#   do arquivo /etc/hosts. Utiliza a lista pública do StevenBlack como base.
+# Description:
+#   Applies adult content filtering and forces SafeSearch mode on major search
+#   engines (Google, Bing, DuckDuckGo) via /etc/hosts manipulation. 
+#   Uses StevenBlack's public blocklist as the baseline.
 #
-# Agendamento:
-#   Executado automaticamente via systemd timer.
+# Scheduling:
+#   Executed automatically via systemd timer.
 #
-# Entradas Locais:
-#   Para preservar hosts locais (ex: IPs de desenvolvimento), adicione-os no
-#   arquivo /etc/hosts.local. Ele será automaticamente mesclado ao topo.
+# Local Entries:
+#   To preserve local hosts (e.g., development IPs), add them to
+#   /etc/hosts.local. It will be automatically merged at the top.
 # ==============================================================================
 set -e
 
 if [ "$EUID" -ne 0 ]; then
-    echo "[!] Acesso negado. A manipulação de rotas requer elevação. Use sudo."
+    echo "[!] Access denied. Route manipulation requires elevation. Use sudo."
     exit 1
 fi
 
@@ -28,26 +28,26 @@ BACKUP="/etc/hosts.bak"
 TMP_DOWNLOAD="/tmp/hosts_stevenblack.tmp"
 TMP_FINAL="/tmp/hosts_final.tmp"
 
-# Se for a primeira execução e o usuário não tiver hosts.local, criamos um
-# com as configurações locais atuais (tentando evitar pegar o arquivo se já for o do StevenBlack)
+# If it's the first run and the user lacks hosts.local, we create one
+# with the current local configs (avoiding capturing the file if it's already StevenBlack's)
 if [ ! -f "$HOSTS_LOCAL" ]; then
-    echo ":: [1/6] Criando arquivo para hosts locais em $HOSTS_LOCAL..."
+    echo ":: [1/6] Creating file for local hosts at $HOSTS_LOCAL..."
     if grep -q "StevenBlack" "$HOSTS"; then
-        # Se já tem StevenBlack, apenas cria vazio
+        # If it already has StevenBlack, just create empty
         touch "$HOSTS_LOCAL"
     else
-        # Se não tem, assumimos que o atual é o original local
+        # If not, we assume the current one is the original local file
         cp "$HOSTS" "$HOSTS_LOCAL"
     fi
 fi
 
-echo ":: [2/6] Baixando a matriz de bloqueio de StevenBlack..."
+echo ":: [2/6] Downloading StevenBlack's blocklist matrix..."
 if ! curl -sS "$URL" -o "$TMP_DOWNLOAD"; then
-    echo "[!] Falha ao baixar a lista. Abortando."
+    echo "[!] Failed to download the list. Aborting."
     exit 1
 fi
 
-echo ":: [3/6] Preparando Entradas Locais..."
+echo ":: [3/6] Preparing Local Entries..."
 cat "$HOSTS_LOCAL" > "$TMP_FINAL"
 echo "" >> "$TMP_FINAL"
 echo "# ==========================================" >> "$TMP_FINAL"
@@ -55,14 +55,13 @@ echo "# FORTRESS: BLOCKLIST (StevenBlack)" >> "$TMP_FINAL"
 echo "# ==========================================" >> "$TMP_FINAL"
 cat "$TMP_DOWNLOAD" >> "$TMP_FINAL"
 
-echo ":: [4/6] Injetando Módulo SafeSearch (Google, Bing, DuckDuckGo)..."
+echo ":: [4/6] Injecting SafeSearch Module (Google, Bing, DuckDuckGo)..."
 
-# Função para resolver DNS com IP de fallback
+# Function to resolve DNS with fallback IP
 resolve_safesearch() {
     local domain=$1
     local fallback=$2
     local ip
-    # Adicionamos timeout e prevenimos falha do set -e se o comando falhar
     ip=$(getent ahosts "$domain" | awk '{print $1}' | head -n 1 || true)
     if [ -z "$ip" ]; then
         echo "$fallback"
@@ -89,13 +88,13 @@ $IP_DDG duckduckgo.com
 $IP_DDG www.duckduckgo.com
 EOF
 
-echo ":: [5/6] Aplicando substituição atômica no arquivo de hosts..."
+echo ":: [5/6] Applying atomic replacement to the hosts file..."
 cp "$HOSTS" "$BACKUP"
 mv "$TMP_FINAL" "$HOSTS"
 chmod 644 "$HOSTS"
 rm -f "$TMP_DOWNLOAD"
 
-echo ":: [6/6] Expurgando o cache de resolução DNS..."
+echo ":: [6/6] Flushing DNS resolution cache..."
 if command -v resolvectl &> /dev/null; then
     resolvectl flush-caches
 elif command -v systemd-resolve &> /dev/null; then
@@ -103,7 +102,7 @@ elif command -v systemd-resolve &> /dev/null; then
 elif command -v nmcli &> /dev/null; then
     systemctl restart NetworkManager
 else
-    echo "[!] Nenhum gerenciador de cache DNS suportado encontrado. Limpeza manual pode ser necessária."
+    echo "[!] No supported DNS cache manager found. Manual flush might be required."
 fi
 
-echo ">> Operação concluída. Tráfego bloqueado e Motores de Busca em modo Estrito."
+echo ">> Operation complete. Traffic blocked and Search Engines set to Strict mode."

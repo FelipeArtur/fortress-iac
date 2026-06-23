@@ -1,5 +1,5 @@
 [Unit]
-Description=Fortress IaC - Atualizador do Escudo Adulto e SafeSearch
+Description=Fortress IaC - Adult Shield & SafeSearch Updater
 After=network-online.target
 Wants=network-online.target
 

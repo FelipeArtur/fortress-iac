@@ -1,12 +1,12 @@
 [Unit]
-Description=Fortress IaC - Gatilho de Atualização do Escudo
+Description=Fortress IaC - Shield Update Trigger
 
 [Timer]
-# Executa 5 minutos após o boot para garantir que a rede estabilizou
+# Runs 5 minutes after boot to ensure network has stabilized
 OnBootSec=5min
-# Executa uma vez por semana (você pode mudar para 'daily' se preferir)
+# Runs once a week (you can change to 'daily' if preferred)
 OnCalendar=weekly
-# Se a máquina estava desligada na hora programada, executa no próximo boot
+# If the machine was off at the scheduled time, runs on next boot
 Persistent=true
 
 [Install]

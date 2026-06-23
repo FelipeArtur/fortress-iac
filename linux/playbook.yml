@@ -1,11 +1,11 @@
 ---
-- name: Implantação do Fortress IaC (Escudo Adulto & SafeSearch)
-  hosts: localhost # Pode ser alterado para 'all' para implantação em frota
+- name: Fortress IaC Deployment (Adult Shield & SafeSearch)
+  hosts: localhost # Can be changed to 'all' for fleet deployment
   connection: local
-  become: true # Exige privilégios de root (sudo)
+  become: true # Requires root privileges (sudo)
   
   tasks:
-    - name: 1. Instalar o motor de bloqueio em /usr/local/sbin/
+    - name: 1. Install the blocking engine in /usr/local/sbin/
       ansible.builtin.copy:
         src: files/fortress-update
         dest: /usr/local/sbin/fortress-update
@@ -13,31 +13,31 @@
         group: root
         mode: '0755'
 
-    - name: 2. Implantar a Unidade de Serviço do Systemd
+    - name: 2. Deploy the Systemd Service Unit
       ansible.builtin.copy:
         src: files/fortress-update.service
         dest: /etc/systemd/system/fortress-update.service
         owner: root
         group: root
         mode: '0644'
-      notify: Recarregar Systemd
+      notify: Reload Systemd
 
-    - name: 3. Implantar o Gatilho de Tempo (Timer)
+    - name: 3. Deploy the Time Trigger (Timer)
       ansible.builtin.copy:
         src: files/fortress-update.timer
         dest: /etc/systemd/system/fortress-update.timer
         owner: root
         group: root
         mode: '0644'
-      notify: Recarregar Systemd
+      notify: Reload Systemd
 
-    - name: 4. Habilitar e iniciar o Timer de atualização automática
+    - name: 4. Enable and start the automatic update Timer
       ansible.builtin.systemd:
         name: fortress-update.timer
         enabled: true
         state: started
 
   handlers:
-    - name: Recarregar Systemd
+    - name: Reload Systemd
       ansible.builtin.systemd:
         daemon_reload: true

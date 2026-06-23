@@ -1,17 +1,16 @@
 <#
 .SYNOPSIS
-    Fortress IaC — Escudo Adulto & SafeSearch (Windows)
+    Fortress IaC — Adult Shield & SafeSearch (Windows)
 .DESCRIPTION
-    Aplica filtragem de conteúdo adulto e força o modo de Busca Segura nos
-    principais mecanismos de pesquisa (Google, Bing, DuckDuckGo) via manipulação
-    do arquivo de hosts do Windows.
+    Applies adult content filtering and forces SafeSearch mode on major search
+    engines (Google, Bing, DuckDuckGo) via Windows hosts file manipulation.
 #>
 
 $ErrorActionPreference = "Stop"
 
-# Requer elevação (Administrador)
+# Requires elevation (Administrator)
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Warning "Acesso negado. Execute o PowerShell como Administrador."
+    Write-Warning "Access denied. Run PowerShell as Administrator."
     exit 1
 }
 
@@ -22,9 +21,9 @@ $BackupFile = "$env:windir\System32\drivers\etc\hosts.bak"
 $TmpDownload = "$env:TEMP\hosts_stevenblack.tmp"
 $TmpFinal = "$env:TEMP\hosts_final.tmp"
 
-# Garante a existência do hosts.local para rotas locais customizadas
+# Ensures the existence of hosts.local for custom local routes
 if (!(Test-Path $HostsLocal)) {
-    Write-Host ":: [1/6] Criando arquivo para hosts locais em $HostsLocal..."
+    Write-Host ":: [1/6] Creating file for local hosts at $HostsLocal..."
     if (Select-String -Path $HostsFile -Pattern "StevenBlack" -Quiet) {
         New-Item -Path $HostsLocal -ItemType File -Force | Out-Null
     } else {
@@ -32,21 +31,21 @@ if (!(Test-Path $HostsLocal)) {
     }
 }
 
-Write-Host ":: [2/6] Baixando a matriz de bloqueio de StevenBlack..."
+Write-Host ":: [2/6] Downloading StevenBlack's blocklist matrix..."
 try {
     Invoke-WebRequest -Uri $Url -OutFile $TmpDownload -UseBasicParsing
 } catch {
-    Write-Error "[!] Falha ao baixar a lista. Abortando."
+    Write-Error "[!] Failed to download the list. Aborting."
     exit 1
 }
 
-Write-Host ":: [3/6] Preparando Entradas Locais..."
+Write-Host ":: [3/6] Preparing Local Entries..."
 $LocalContent = Get-Content -Path $HostsLocal -Raw
 $ListContent = Get-Content -Path $TmpDownload -Raw
 
 $FinalContent = $LocalContent + "`n`n# ==========================================`n# FORTRESS: BLOCKLIST (StevenBlack)`n# ==========================================`n" + $ListContent
 
-Write-Host ":: [4/6] Injetando Módulo SafeSearch (Google, Bing, DuckDuckGo)..."
+Write-Host ":: [4/6] Injecting SafeSearch Module (Google, Bing, DuckDuckGo)..."
 
 function Resolve-SafeSearch {
     param([string]$Domain, [string]$Fallback)
@@ -79,12 +78,12 @@ $IpDdg www.duckduckgo.com
 $FinalContent += $SafeSearchBlock
 Set-Content -Path $TmpFinal -Value $FinalContent -Encoding utf8
 
-Write-Host ":: [5/6] Aplicando substituição no arquivo de hosts..."
+Write-Host ":: [5/6] Applying replacement to the hosts file..."
 Copy-Item -Path $HostsFile -Destination $BackupFile -Force
 Copy-Item -Path $TmpFinal -Destination $HostsFile -Force
 Remove-Item -Path $TmpDownload -Force
 
-Write-Host ":: [6/6] Expurgando o cache de resolução DNS..."
+Write-Host ":: [6/6] Flushing DNS resolution cache..."
 Clear-DnsClientCache
 
-Write-Host ">> Operação concluída. Tráfego bloqueado e Motores de Busca em modo Estrito."
+Write-Host ">> Operation complete. Traffic blocked and Search Engines set to Strict mode."
