@@ -104,6 +104,16 @@ Remove-Item -Path $TmpDownload -Force -ErrorAction SilentlyContinue
 Remove-Item -Path $TmpFinal -Force -ErrorAction SilentlyContinue
 
 Write-Host ":: [6/6] Flushing DNS resolution cache..."
-Clear-DnsClientCache
+# A large hosts file makes the DNS Client service (Dnscache) busy reloading it,
+# which can make Clear-DnsClientCache block for a long time. Run it with a
+# timeout so the script never hangs; the cache still clears in the background.
+$flushJob = Start-Job { Clear-DnsClientCache }
+if (Wait-Job $flushJob -Timeout 15) {
+    Receive-Job $flushJob -ErrorAction SilentlyContinue | Out-Null
+} else {
+    Write-Warning "DNS flush is slow (large hosts file); continuing. It finishes in the background, or run 'ipconfig /flushdns' later."
+    Stop-Job $flushJob -ErrorAction SilentlyContinue
+}
+Remove-Job $flushJob -Force -ErrorAction SilentlyContinue
 
 Write-Host ">> Operation complete. Traffic blocked and Search Engines set to Strict mode."

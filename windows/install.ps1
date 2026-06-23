@@ -61,7 +61,13 @@ $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccou
 Write-Host "Creating the Scheduled Task '$TaskName'..."
 Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger @($TriggerBoot, $TriggerWeekly) -Principal $Principal -Force | Out-Null
 
-Write-Host "Starting the first execution immediately..."
-Start-ScheduledTask -TaskName $TaskName
+# Apply the filter now by running the engine DIRECTLY in this elevated session.
+# We intentionally do NOT use Start-ScheduledTask here: the task runs as SYSTEM,
+# which does not inherit the interactive user's network/proxy and can silently
+# fail to download the blocklist on first install. A direct call guarantees the
+# block is applied immediately, with working network. The task still handles the
+# scheduled boot/weekly runs.
+Write-Host "Applying the filter now (first run)..."
+& $ScriptPath
 
 Write-Host "Installation completed successfully."
