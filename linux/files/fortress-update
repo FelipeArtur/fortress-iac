@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Fortress IaC — Escudo Adulto & SafeSearch
+# ==============================================================================
+# Descrição:
+#   Aplica filtragem de conteúdo adulto e força o modo de Busca Segura nos
+#   principais mecanismos de pesquisa (Google, Bing, DuckDuckGo) via manipulação
+#   do arquivo /etc/hosts. Utiliza a lista pública do StevenBlack como base.
+#
+# Agendamento:
+#   Executado automaticamente via systemd timer.
+#
+# Entradas Locais:
+#   Para preservar hosts locais (ex: IPs de desenvolvimento), adicione-os no
+#   arquivo /etc/hosts.local. Ele será automaticamente mesclado ao topo.
+# ==============================================================================
+set -e
+
+if [ "$EUID" -ne 0 ]; then
+    echo "[!] Acesso negado. A manipulação de rotas requer elevação. Use sudo."
+    exit 1
+fi
+
+URL="https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn/hosts"
+HOSTS="/etc/hosts"
+HOSTS_LOCAL="/etc/hosts.local"
+BACKUP="/etc/hosts.bak"
+TMP_DOWNLOAD="/tmp/hosts_stevenblack.tmp"
+TMP_FINAL="/tmp/hosts_final.tmp"
+
+# Se for a primeira execução e o usuário não tiver hosts.local, criamos um
+# com as configurações locais atuais (tentando evitar pegar o arquivo se já for o do StevenBlack)
+if [ ! -f "$HOSTS_LOCAL" ]; then
+    echo ":: [1/6] Criando arquivo para hosts locais em $HOSTS_LOCAL..."
+    if grep -q "StevenBlack" "$HOSTS"; then
+        # Se já tem StevenBlack, apenas cria vazio
+        touch "$HOSTS_LOCAL"
+    else
+        # Se não tem, assumimos que o atual é o original local
+        cp "$HOSTS" "$HOSTS_LOCAL"
+    fi
+fi
+
+echo ":: [2/6] Baixando a matriz de bloqueio de StevenBlack..."
+if ! curl -sS "$URL" -o "$TMP_DOWNLOAD"; then
+    echo "[!] Falha ao baixar a lista. Abortando."
+    exit 1
+fi
+
+echo ":: [3/6] Preparando Entradas Locais..."
+cat "$HOSTS_LOCAL" > "$TMP_FINAL"
+echo "" >> "$TMP_FINAL"
+echo "# ==========================================" >> "$TMP_FINAL"
+echo "# FORTRESS: BLOCKLIST (StevenBlack)" >> "$TMP_FINAL"
+echo "# ==========================================" >> "$TMP_FINAL"
+cat "$TMP_DOWNLOAD" >> "$TMP_FINAL"
+
+echo ":: [4/6] Injetando Módulo SafeSearch (Google, Bing, DuckDuckGo)..."
+
+# Função para resolver DNS com IP de fallback
+resolve_safesearch() {
+    local domain=$1
+    local fallback=$2
+    local ip
+    # Adicionamos timeout e prevenimos falha do set -e se o comando falhar
+    ip=$(getent ahosts "$domain" | awk '{print $1}' | head -n 1 || true)
+    if [ -z "$ip" ]; then
+        echo "$fallback"
+    else
+        echo "$ip"
+    fi
+}
+
+IP_GOOGLE=$(resolve_safesearch "forcesafesearch.google.com" "216.239.38.120")
+IP_BING=$(resolve_safesearch "strict.bing.com" "204.79.197.220")
+IP_DDG=$(resolve_safesearch "safe.duckduckgo.com" "107.20.240.232")
+
+cat <<EOF >> "$TMP_FINAL"
+
+# ==========================================
+# FORTRESS: FORCED SAFESEARCH
+# ==========================================
+$IP_GOOGLE www.google.com
+$IP_GOOGLE www.google.com.br
+$IP_GOOGLE google.com
+$IP_BING www.bing.com
+$IP_BING bing.com
+$IP_DDG duckduckgo.com
+$IP_DDG www.duckduckgo.com
+EOF
+
+echo ":: [5/6] Aplicando substituição atômica no arquivo de hosts..."
+cp "$HOSTS" "$BACKUP"
+mv "$TMP_FINAL" "$HOSTS"
+chmod 644 "$HOSTS"
+rm -f "$TMP_DOWNLOAD"
+
+echo ":: [6/6] Expurgando o cache de resolução DNS..."
+if command -v resolvectl &> /dev/null; then
+    resolvectl flush-caches
+elif command -v systemd-resolve &> /dev/null; then
+    systemd-resolve --flush-caches
+elif command -v nmcli &> /dev/null; then
+    systemctl restart NetworkManager
+else
+    echo "[!] Nenhum gerenciador de cache DNS suportado encontrado. Limpeza manual pode ser necessária."
+fi
+
+echo ">> Operação concluída. Tráfego bloqueado e Motores de Busca em modo Estrito."

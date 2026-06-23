@@ -1,5 +1,5 @@
 [Unit]
-Description=Gatilho Semanal para Atualização do Escudo Fortress
+Description=Fortress IaC - Gatilho de Atualização do Escudo
 
 [Timer]
 # Executa 5 minutos após o boot para garantir que a rede estabilizou

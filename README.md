@@ -1,120 +1,76 @@
-# Fortress X99 — Escudo Adulto & SafeSearch
+# Fortress IaC
 
-Infraestrutura automatizada para filtragem de conteúdo adulto e imposição de Busca Segura (SafeSearch) via `/etc/hosts`, implantada com Ansible e mantida por um systemd timer.
+O Fortress IaC é uma solução de automação de infraestrutura projetada para aplicar filtragem de conteúdo adulto e imposição de Busca Segura (SafeSearch) nos principais motores de busca (Google, Bing, DuckDuckGo). A ferramenta opera gerenciando dinamicamente o arquivo `hosts` do sistema operacional e possui suporte para ambientes Linux e Windows.
 
----
+## Arquitetura
 
-## Como funciona
+O script de automação é executado durante a inicialização do sistema e de forma programada semanalmente. O fluxo de execução consiste em:
 
-A cada execução, o script `fortress-update`:
+1. Identificar e preservar configurações locais de rede por meio de um arquivo auxiliar (`hosts.local`).
+2. Realizar o download da lista pública de bloqueio de conteúdo adulto do repositório [StevenBlack/hosts](https://github.com/StevenBlack/hosts).
+3. Resolver e injetar os endpoints de DNS para forçar o modo estrito de SafeSearch.
+4. Aplicar as alterações de forma atômica para prevenir a corrupção do roteamento local.
+5. Executar a limpeza do cache de DNS do sistema.
 
-1. Faz backup do `/etc/hosts` atual
-2. Baixa a lista de bloqueio de conteúdo adulto do [StevenBlack/hosts](https://github.com/StevenBlack/hosts)
-3. Aplica a lista como novo `/etc/hosts`
-4. Injeta entradas que forçam o modo restrito no Google, Bing e DuckDuckGo
-5. Limpa o cache DNS
+## Estrutura do Repositório
 
-A execução é automática: 5 minutos após o boot e semanalmente.
-
----
-
-## Pré-requisitos
-
-| Ferramenta | Finalidade |
-|---|---|
-| `ansible` | Implantação da infraestrutura |
-| `curl` | Download da lista de bloqueio |
-| `getent` | Resolução DNS dos endpoints de SafeSearch |
-| `resolvectl` ou `NetworkManager` | Flush do cache DNS |
-
-**Instalar o Ansible no Arch/CachyOS:**
-
-```bash
-sudo pacman -S ansible
-```
-
----
-
-## Instalação
-
-### 1. Clonar o repositório
-
-```bash
-git clone <url-do-repositório> fortress-iac
-cd fortress-iac
-```
-
-### 2. Executar o playbook Ansible
-
-```bash
-sudo ansible-playbook playbook.yml
-```
-
-O playbook irá:
-- Copiar o script para `/usr/local/sbin/fortress-update`
-- Instalar as unidades systemd (`fortress-update.service` e `fortress-update.timer`)
-- Habilitar e iniciar o timer automático
-
-### 3. Verificar se o timer está ativo
-
-```bash
-systemctl status fortress-update.timer
-```
-
-Você deve ver `Active: active (waiting)`.
-
----
-
-## Execução manual
-
-Para rodar o escudo imediatamente, sem esperar o timer:
-
-```bash
-sudo fortress-update
-```
-
----
-
-## Verificação
-
-Confirmar que o bloqueio está funcionando:
-
-```bash
-# Deve retornar o IP de SafeSearch, não o IP real do Google
-getent hosts www.google.com
-
-# Verificar o log da última execução automática
-journalctl -u fortress-update.service -n 30
-```
-
----
-
-## Desinstalação
-
-```bash
-# Parar e desabilitar o timer
-sudo systemctl stop fortress-update.timer
-sudo systemctl disable fortress-update.timer
-
-# Remover os arquivos instalados
-sudo rm /usr/local/sbin/fortress-update
-sudo rm /etc/systemd/system/fortress-update.service
-sudo rm /etc/systemd/system/fortress-update.timer
-sudo systemctl daemon-reload
-
-# Restaurar o hosts original (se o backup existir)
-sudo cp /etc/hosts.x99.bak /etc/hosts
-```
-
----
-
-## Estrutura do repositório
-
-```
+```text
 fortress-iac/
-├── playbook.yml              # Playbook Ansible de implantação
-└── files/
-    ├── fortress-update        # Script principal de filtragem
-    ├── fortress-update.service # Unidade systemd (serviço oneshot)
-    └── fortress-update.timer  # Unidade systemd (agendamento)
+├── README.md
+├── linux/
+│   ├── playbook.yml             # Playbook de implantação Ansible
+│   └── files/                   # Script principal e unidades do Systemd
+└── windows/
+    ├── install.ps1              # Script de implantação (Task Scheduler)
+    └── fortress-update.ps1      # Script principal em PowerShell
 ```
+
+## Implantação no Linux
+
+### Pré-requisitos
+*   `ansible` (Para implantação)
+*   `curl`
+*   `getent`
+
+### Instalação
+
+1. Navegue até o diretório Linux:
+   ```bash
+   cd linux
+   ```
+2. Execute o playbook do Ansible com privilégios de superusuário:
+   ```bash
+   sudo ansible-playbook playbook.yml
+   ```
+3. Verifique o status de agendamento do serviço:
+   ```bash
+   systemctl status fortress-update.timer
+   ```
+
+## Implantação no Windows
+
+### Pré-requisitos
+*   PowerShell 5.1 ou superior
+*   Privilégios de Administrador
+
+### Instalação
+
+1. Abra o PowerShell como Administrador.
+2. Navegue até o diretório Windows:
+   ```powershell
+   cd windows
+   ```
+3. Execute o script de instalação:
+   ```powershell
+   .\install.ps1
+   ```
+   *Nota: Caso as políticas do sistema bloqueiem a execução, utilize o comando `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` previamente.*
+
+O instalador configurará uma Tarefa Agendada operando sob a conta de sistema (`SYSTEM`), programada para ser executada na inicialização da máquina e semanalmente.
+
+## Gestão de Entradas Locais Customizadas
+
+Para preservar configurações de rede locais que não devem ser sobrescritas (como IPs de servidores de desenvolvimento local ou atalhos internos), as rotas devem ser declaradas no arquivo correspondente abaixo. O sistema incluirá automaticamente este conteúdo no início do arquivo `hosts` principal em todas as execuções.
+
+*   **Linux:** `/etc/hosts.local`
+*   **Windows:** `C:\Windows\System32\drivers\etc\hosts.local`

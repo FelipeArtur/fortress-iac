@@ -1,5 +1,5 @@
 [Unit]
-Description=Pinguim Supremo X99 - Atualizador do Escudo Adulto e SafeSearch
+Description=Fortress IaC - Atualizador do Escudo Adulto e SafeSearch
 After=network-online.target
 Wants=network-online.target
 
