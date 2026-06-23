@@ -50,8 +50,14 @@ Write-Host ":: [4/6] Injecting SafeSearch Module (Google, Bing, DuckDuckGo)..."
 function Resolve-SafeSearch {
     param([string]$Domain, [string]$Fallback)
     try {
-        $Result = Resolve-DnsName -Name $Domain -Type A -ErrorAction Stop | Select-Object -First 1
-        return $Result.IPAddress
+        # Filter to A records only. Resolve-DnsName returns the full answer
+        # chain (CNAME + A); the first record is often a CNAME whose
+        # .IPAddress is null, which would silently produce an empty IP.
+        $Record = Resolve-DnsName -Name $Domain -Type A -ErrorAction Stop |
+            Where-Object { $_.Type -eq 'A' -and $_.IPAddress } |
+            Select-Object -First 1
+        if ($Record) { return $Record.IPAddress }
+        return $Fallback
     } catch {
         return $Fallback
     }
@@ -76,12 +82,21 @@ $IpDdg www.duckduckgo.com
 "@
 
 $FinalContent += $SafeSearchBlock
-Set-Content -Path $TmpFinal -Value $FinalContent -Encoding utf8
+
+# Normalize all line endings to CRLF for Windows.
+$FinalContent = $FinalContent -replace "`r`n", "`n" -replace "`n", "`r`n"
+
+# Write WITHOUT a BOM. PowerShell 5.1 '-Encoding utf8' emits a BOM, which
+# corrupts the first hosts entry and breaks resolution. UTF8Encoding($false)
+# guarantees no BOM while preserving any non-ASCII comments in hosts.local.
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($TmpFinal, $FinalContent, $Utf8NoBom)
 
 Write-Host ":: [5/6] Applying replacement to the hosts file..."
 Copy-Item -Path $HostsFile -Destination $BackupFile -Force
 Copy-Item -Path $TmpFinal -Destination $HostsFile -Force
-Remove-Item -Path $TmpDownload -Force
+Remove-Item -Path $TmpDownload -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $TmpFinal -Force -ErrorAction SilentlyContinue
 
 Write-Host ":: [6/6] Flushing DNS resolution cache..."
 Clear-DnsClientCache
